@@ -1,10 +1,16 @@
+import os
 from sqlalchemy import create_engine, Column, String, Float, Integer
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from passlib.context import CryptContext
 
-DATABASE_URL = "sqlite:///./exylio.db"
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./exylio.db")
+
+# Fix asyncpg issue
+if DATABASE_URL.startswith("postgresql://"):
+    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://", 1)
+
+engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
 pwd_context = CryptContext(schemes=["bcrypt"])
@@ -30,6 +36,12 @@ def init_db():
     existing = db.query(User).filter_by(email="demo@exylio.com").first()
     if not existing:
         db.add(User(
+            email="demo@exylio.com",
+            password=pwd_context.hash("exylio123"),
+            name="Demo Trader"
+        ))
+        db.commit()
+    db.close()
             email="demo@exylio.com",
             password=pwd_context.hash("exylio123"),
             name="Demo Trader"
